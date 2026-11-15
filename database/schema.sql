@@ -1,6 +1,6 @@
 CREATE TABLE users (
     id INTEGER PRIMARY KEY, 
-    username TEXT NOT NULL UNIQUE,
+    username TEXT NOT NULL UNIQUE COLLATE NOCASE, --stops users from having the same username
     password_hash TEXT NOT NULL, 
     role TEXT NOT NULL default 'user', 
     is_active INTEGER NOT NULL DEFAULT 1,
