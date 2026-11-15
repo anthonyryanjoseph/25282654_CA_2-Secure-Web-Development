@@ -1,4 +1,5 @@
 import os
+import sqlite3
 from dotenv import load_dotenv
 from flask import Flask, render_template, request
 from flask_wtf.csrf import CSRFProtect #CSRF protection for forms that change application data
@@ -37,6 +38,23 @@ def register():
             return render_template( "register.html", error="Passwords do not match."), 400 #check if both passwrod match
 
         password_hash = generate_password_hash(password) #hashin the password
+
+        insert_sql = "INSERT INTO users (username, password_hash) VALUES (?, ?)"
+
+        connection = get_db_connection()
+
+        try:
+            connection.execute(insert_sql, (username, password_hash))
+            connection.commit()
+
+        except sqlite3.IntegrityError as error:
+              if error.sqlite_errorcode == sqlite3.SQLITE_CONSTRAINT_UNIQUE:
+                 return render_template("register.html", error="Username is already taken."), 409 # Show a message if the username is already taken.
+              raise
+        
+        finally:
+            connection.close()
+        return render_template("register.html",success="Account created successfully!"), 201
 
     return render_template("register.html")
 
