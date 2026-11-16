@@ -22,8 +22,23 @@ limiter = Limiter(get_remote_address, app=app, storage_uri="memory://") #limits 
 
 @app.route("/")
 def home():
-    if "user_id" not in session:
-        return redirect(url_for("login")) #Send users to login if they are not signed in.
+    user_id = session.get("user_id")
+
+    if user_id is None:
+        return redirect(url_for("login"))
+
+    connection = get_db_connection()
+
+    try:
+        user = connection.execute("SELECT is_active FROM users WHERE id = ?",(user_id,)).fetchone()
+
+    finally:
+        connection.close()
+
+    if user is None or user[0] != 1:  #Reject deleted or disabled accounts.
+        session.clear()
+        return redirect(url_for("login")) 
+
     return render_template("home.html")
 
 @app.route("/register", methods=["GET", "POST"])
@@ -68,6 +83,7 @@ def register():
     return render_template("register.html")
 
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute", methods=["POST"]) #to avoid bruteforcing
 def login():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
