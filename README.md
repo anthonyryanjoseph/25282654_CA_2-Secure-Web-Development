@@ -22,6 +22,7 @@ Install the Libraries :
 python -m pip install Flask
 python -m pip install Flask-WTF
 python -m pip install python-dotenv
+python -m pip install Flask-Limiter
 
 Confirgure a secret key: 
 python -c "import secrets; print(secrets.token_hex(32))"
@@ -31,6 +32,7 @@ FLASK_SECRET_KEY=PASTE_GENERATED_KEY_HERE (-paste the hex value generated)
 
 Initialize the sqlite databse 
 python -c "from db import init_db; init_db()"
+
 
 Start the app:
 python main.py
