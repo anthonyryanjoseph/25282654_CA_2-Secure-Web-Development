@@ -6,12 +6,15 @@ from flask_wtf.csrf import CSRFProtect #CSRF protection for forms that change ap
 from db import get_db_connection
 from werkzeug.security import generate_password_hash
 from validators import validate_username, validate_password
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 load_dotenv()
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ["FLASK_SECRET_KEY"] # Require a secret key from the environment
 csrf = CSRFProtect(app) #Enable CSRF protection 
+limiter = Limiter(get_remote_address, app=app, storage_uri="memory://") #limits the amount of req a user could make.
 
 
 @app.get("/")
@@ -19,6 +22,7 @@ def home():
     return "Anime Library is running!"
 
 @app.route("/register", methods=["GET", "POST"])
+@limiter.limit("5 per hour", methods=["POST"]) #limits
 def register():
     if request.method == "POST" : 
         print("Registration Form submitted.")
