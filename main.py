@@ -5,21 +5,26 @@ from flask import Flask, render_template, request
 from flask_wtf.csrf import CSRFProtect #CSRF protection for forms that change application data
 from db import get_db_connection
 from werkzeug.security import generate_password_hash
+from werkzeug.security import check_password_hash
 from validators import validate_username, validate_password
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-
+from flask import Flask, render_template, request, session, redirect, url_for
 load_dotenv()
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ["FLASK_SECRET_KEY"] # Require a secret key from the environment
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax" #Makes session cookies harder to steal or misuse.
 csrf = CSRFProtect(app) #Enable CSRF protection 
 limiter = Limiter(get_remote_address, app=app, storage_uri="memory://") #limits the amount of req a user could make.
 
 
-@app.get("/")
+@app.route("/")
 def home():
-    return "Anime Library is running!"
+    if "user_id" not in session:
+        return redirect(url_for("login")) #Send users to login if they are not signed in.
+    return render_template("home.html")
 
 @app.route("/register", methods=["GET", "POST"])
 @limiter.limit("5 per hour", methods=["POST"]) #limits
@@ -62,6 +67,39 @@ def register():
 
     return render_template("register.html")
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+
+        connection = get_db_connection()
+
+        try:
+            user = connection.execute("SELECT id, username, password_hash," \
+            " role, is_active FROM users WHERE username = ? COLLATE NOCASE",(username,)).fetchone()
+
+        finally:
+           connection.close()
+
+        if user is None:
+           return render_template("login.html", error="Invalid username or password."), 401 #check if the user exists.
+        
+        if not check_password_hash(user[2], password):
+           return render_template("login.html", error="Invalid username or password."), 401 #check if the password matches the hash
+
+        if user[4] != 1:
+           return render_template("login.html", error="Invalid username or password."), 401 #stops disabled accounts from logging in.
+        session.clear()
+        session["user_id"] = user[0] 
+        return redirect(url_for("home"))
+
+    return render_template("login.html")
+
+@app.post("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 if __name__ == "__main__":
     app.run(debug=False)
