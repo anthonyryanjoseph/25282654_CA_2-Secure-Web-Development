@@ -1,0 +1,10 @@
+<h2>Add Anime</h2>
+
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">  
+
+    <label for="title">Anime Title:</label>
+    <input type="text" id="title" name="title" maxlength="150" required>
+
+    <button type="submit">Add Anime</button>
+</form>

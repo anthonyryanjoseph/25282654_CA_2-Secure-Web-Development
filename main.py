@@ -113,8 +113,57 @@ def view_collection(collection_id):
 
     if collection is None:
         return "Collection not found.", 404
+    
+    connection = get_db_connection()
+    try:
+        anime_entries = connection.execute(
+            "SELECT title, watch_status, rating FROM anime_entries WHERE collection_id = ? ORDER BY id DESC",(collection_id,) ).fetchall()
+    finally:
+        connection.close()
 
-    return render_template("collection.html", collection_name=collection[0])
+    return render_template( "collection.html", collection_name=collection[0], collection_id=collection_id, anime_entries=anime_entries )
+                                    
+
+@app.route("/collections/<int:collection_id>/anime/new", methods=["GET", "POST"])
+def add_anime(collection_id):
+    user_id = session.get("user_id")
+
+    if user_id is None:
+        return redirect(url_for("login"))
+
+    connection = get_db_connection()
+
+    try:
+        user = connection.execute(
+            "SELECT is_active FROM users WHERE id = ?",(user_id,)).fetchone()
+        
+        collection = connection.execute(
+            "SELECT id FROM collections WHERE id = ? AND owner_id = ?",(collection_id, user_id)).fetchone() # again, allow anime to be added to your own collection.
+    finally:
+        connection.close()
+
+    if user is None or user[0] != 1:
+        session.clear()
+        return redirect(url_for("login"))
+
+    if collection is None:
+        return "Collection not found.", 404
+
+    if request.method == "POST":
+        title = request.form.get("title", "").strip() # Check the anime title on the server.
+    
+        if not 1 <= len(title) <= 150:
+             return "Anime title must be between 1 and 150 characters.", 400 
+        connection = get_db_connection()
+        try:
+            connection.execute(
+                "INSERT INTO anime_entries (collection_id, title) VALUES (?, ?)",(collection_id, title))
+            connection.commit()
+        finally:
+            connection.close()
+
+        return redirect(url_for("view_collection", collection_id=collection_id))
+    return render_template("add_anime.html")
 
 @app.route("/register", methods=["GET", "POST"])
 @limiter.limit("5 per hour", methods=["POST"]) #limits

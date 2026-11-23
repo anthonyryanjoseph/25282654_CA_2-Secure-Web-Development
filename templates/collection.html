@@ -1,5 +1,18 @@
 <h2>{{ collection_name }}</h2>
+<a href="{{ url_for('add_anime', collection_id=collection_id) }}">Add Anime</a>
 
-<p>No anime added yet.</p>
+<h3>Anime List</h3>
+
+{% if anime_entries %}
+    <ul>
+        {% for anime in anime_entries %}
+            <li>
+                {{ anime[0] }} - {{ anime[1] }}
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>No anime added yet.</p>
+{% endif %}
 
 <a href="{{ url_for('home') }}">Back to Library</a>
