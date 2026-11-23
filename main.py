@@ -86,6 +86,36 @@ def new_collection():
         return redirect(url_for("home"))
     return render_template("create_collection.html")
 
+@app.get("/collections/<int:collection_id>")
+def view_collection(collection_id):
+    user_id = session.get("user_id")
+
+    if user_id is None:
+        return redirect(url_for("login"))
+
+    connection = get_db_connection()
+
+    try:
+        user = connection.execute(
+            "SELECT is_active FROM users WHERE id = ?",(user_id,)).fetchone()
+
+        collection = None
+
+        if user is not None and user[0] == 1:
+            collection = connection.execute(
+                "SELECT name FROM collections WHERE id = ? AND owner_id = ?",(collection_id, user_id)).fetchone() # Only allow users to open their own collections
+    finally:
+        connection.close()
+
+    if user is None or user[0] != 1:
+        session.clear()
+        return redirect(url_for("login"))
+
+    if collection is None:
+        return "Collection not found.", 404
+
+    return render_template("collection.html", collection_name=collection[0])
+
 @app.route("/register", methods=["GET", "POST"])
 @limiter.limit("5 per hour", methods=["POST"]) #limits
 def register():
