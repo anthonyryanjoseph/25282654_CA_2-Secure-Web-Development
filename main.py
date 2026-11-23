@@ -39,7 +39,52 @@ def home():
         session.clear()
         return redirect(url_for("login")) 
 
-    return render_template("home.html")
+    connection = get_db_connection()
+
+    try:
+        collections = connection.execute(
+        "SELECT id, name, is_public FROM collections WHERE owner_id = ? ORDER BY id DESC",(user_id,)).fetchall()
+    finally:
+       connection.close()
+
+    return render_template("home.html", collections=collections)
+
+@app.route("/collections/new", methods=["GET", "POST"])
+def new_collection():
+    user_id = session.get("user_id")
+
+    if user_id is None:
+      return redirect(url_for("login"))
+
+    connection = get_db_connection()
+
+    try:
+         user = connection.execute(
+          "SELECT is_active FROM users WHERE id = ?",(user_id,)).fetchone()
+    finally:
+         connection.close()
+        
+    if user is None or user[0] != 1:  # Stop disabled or deleted users from creating collections.
+         session.clear()
+         return redirect(url_for("login"))
+    
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+
+        if not 1 <= len(name) <= 100:
+          return "Collection name must be between 1 and 100 characters.", 400 #giving a check for the collection name in the server.
+        
+        connection = get_db_connection()
+
+        try:
+           connection.execute(
+             "INSERT INTO collections (owner_id, name, is_public) VALUES (?, ?, ?)",(user_id, name, 0)) #parameterized
+           connection.commit()
+        finally:
+           connection.close()
+
+        return redirect(url_for("home"))
+    return render_template("create_collection.html")
 
 @app.route("/register", methods=["GET", "POST"])
 @limiter.limit("5 per hour", methods=["POST"]) #limits

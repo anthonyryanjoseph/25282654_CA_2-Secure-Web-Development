@@ -1,6 +1,24 @@
 <h2>Anime Library</h2>
 <p>Welcome to your anime library!</p>
+<a href="{{ url_for('new_collection') }}">Create a Collection</a>
+<h3>My Collections</h3>
 
+{% if collections %}
+    <ul>
+        {% for collection in collections %}
+            <li>
+                {{ collection[1] }}
+                {% if collection[2] == 0 %}
+                    (Private)
+                {% else %}
+                    (Public)
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>You haven't created any collections yet.</p>
+{% endif %}
 <form method="post" action="{{ url_for('logout') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit">Log Out</button>
